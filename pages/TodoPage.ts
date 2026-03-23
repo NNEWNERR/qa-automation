@@ -4,7 +4,7 @@ import { BasePage } from './BasePage'
 
 export class TodoPage extends BasePage {
     readonly input = this.page.getByPlaceholder('What needs to be done?')
-    readonly items = this.page.getByRole('listitem')
+    readonly items = this.page.locator('.todo-list li')
 
     async addTodo(text: string) {
         await this.input.fill(text)
