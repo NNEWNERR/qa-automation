@@ -5,7 +5,7 @@ async function globalSetup(config: FullConfig) {
     const baseURL = config.projects.find(p => p.name === 'login-tests')?.use?.baseURL ?? 'http://localhost:8100'
     const browser = await chromium.launch()
     try {
-        await loginAs(browser, baseURL, 'admin', '1234', 'auth/admin.json')
+        await loginAs(browser, baseURL, 'admin', '123456', 'auth/admin.json')
         await loginAs(browser, baseURL, 'user', 'password', 'auth/user.json')
     } catch (e) {
         // App not reachable or login failed — write empty stubs so fixtures don't crash.

@@ -46,8 +46,27 @@ export default defineConfig({
       },
     },
     {
+      name: 'user-crud-tests',
+      testMatch: '**/user-crud.spec.ts',
+      use: {
+        baseURL: 'https://jsonplaceholder.typicode.com',
+        channel: 'chrome',
+        extraHTTPHeaders: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      },
+    },
+    {
       name: 'login-tests',
       testMatch: '**/login.spec.ts',
+      use: {
+        baseURL: 'http://localhost:8100',
+        channel: 'chrome',
+        launchOptions: {
+          slowMo: 500, // ⏳ 0.5 วินาทีต่อ action
+        },
+      },
       // inherits baseURL: 'https://your-app.com' from global use
     },
   ],
