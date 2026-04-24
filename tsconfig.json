@@ -5,7 +5,8 @@
     "strict": true,        // บังคับ type safety เต็มรูปแบบ
     "esModuleInterop": true,
     "baseUrl": ".",
-    "paths": { "@types/*": ["types/*"] }
+    "paths": { "@types/*": ["types/*"] },
+    "types": ["node"]
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]

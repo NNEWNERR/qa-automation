@@ -1,13 +1,8 @@
-import { JPUser } from '../types/index';
 import { test, expect } from '@playwright/test'
 
-test('API reachable + types work', async ({ request }) => {
+// Smoke: verify the API is reachable before running the full suite.
+// No business-logic assertions here — that belongs in api.spec.ts.
+test('API connectivity check', async ({ request }) => {
   const res = await request.get('/users/1')
-  expect(res.status()).toBe(200)
-
-  const user: JPUser = await res.json()
-  expect(user.id).toBe(1)
-  expect(user.email).toContain('@')
-
-  console.log(`✓ Got user: ${user.name} <${user.email}>`)
+  expect(res.ok()).toBe(true)
 })

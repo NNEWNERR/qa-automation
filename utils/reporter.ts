@@ -1,8 +1,14 @@
 // utils/reporter.ts
 import type { TestInfo } from '@playwright/test'
 import type {
-    ExecutedTest, TestStatus, TestResult, SummaryReport
+    ExecutedTest, TestStatus, TestResult, SummaryReport, Environment
 } from '../types'
+
+function resolveEnv(): Environment {
+    const e = process.env['TEST_ENV']
+    if (e === 'local' || e === 'staging' || e === 'production') return e
+    return 'staging'
+}
 
 // map Playwright status → TestStatus union
 function toStatus(s: TestInfo['status']): TestStatus {
@@ -55,7 +61,7 @@ export function generateReport(tests: ExecutedTest[]): SummaryReport {
         avgDurationMs: tests.length === 0 ? 0 : Math.round(totalMs / tests.length),
         slowestTest: slowest.title,
         failedTitles: tests.filter(t => t.result.status === 'failed').map(t => t.title),
-        env: 'staging',
+        env: resolveEnv(),
         generatedAt: new Date(),
     }
 }
