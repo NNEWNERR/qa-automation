@@ -1,22 +1,35 @@
 import { defineConfig } from '@playwright/test'
 
+const isCI = !!process.env.CI
+
 export default defineConfig({
   testDir: './tests',
+  // fullyParallel: true,
+  // forbidOnly: isCI,
+  // retries: isCI ? 2 : 0,
+  // workers: isCI ? '50%' : undefined,
+  // reporter: isCI ? 'github' : 'list',
   timeout: 30_000,
-  retries: 1,
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? '50%' : undefined,
+  expect: { timeout: 10_000 },
+  // retries: 1,
   reporter: [
     ['html', { open: 'never' }],
     ['list']
   ],
   globalSetup: './global.setup.ts',
   use: {
-    baseURL: 'http://localhost:8100',
+    baseURL: process.env.BASE_URL ?? 'http://localhost:8100',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     trace: 'on-first-retry',
-    launchOptions: {
-      slowMo: 1000, 
-    },
+    actionTimeout: 5_000,
+    // launchOptions: {
+    //   slowMo: 1000,
+    // },
   },
   projects: [
     {
@@ -24,6 +37,7 @@ export default defineConfig({
       testMatch: '**/smoke.spec.ts',
       use: {
         baseURL: 'https://jsonplaceholder.typicode.com',
+        channel: 'chrome',
         extraHTTPHeaders: {
           'Accept': 'application/json',
         },

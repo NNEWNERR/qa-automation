@@ -3,7 +3,8 @@
     "allow": [
       "Read(//d/github/WFT-V1/**)",
       "Bash(npm start *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(npm test *)"
     ]
   }
 }
