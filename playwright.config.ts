@@ -14,6 +14,9 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     trace: 'on-first-retry',
+    launchOptions: {
+      slowMo: 1000, 
+    },
   },
   projects: [
     {
@@ -63,19 +66,23 @@ export default defineConfig({
       use: {
         baseURL: 'http://localhost:8100',
         channel: 'chrome',
-        launchOptions: {
-          slowMo: 500, // ⏳ 0.5 วินาทีต่อ action
-        },
       },
-      // inherits baseURL: 'https://your-app.com' from global use
+    },
+    {
+      name: 'a11y-tests',
+      testMatch: '**/a11y.spec.ts',
+      use: {
+        baseURL: 'https://demo.playwright.dev/todomvc',
+        channel: 'chrome',
+      },
+    },
+    {
+      name: 'visual-tests',
+      testMatch: '**/visual.spec.ts',
+      use: {
+        baseURL: 'https://demo.playwright.dev/todomvc',
+        channel: 'chrome',
+      },
     },
   ],
-
-  // use: {
-  //   baseURL: 'https://demo.playwright.dev/todomvc',
-  //   screenshot: 'only-on-failure',
-  //   video:      'retain-on-failure',
-  //   trace:      'on-first-retry',
-  // },
-  // projects: [{ name: 'chromium', use: { channel: 'chrome' } }],
 })
