@@ -5,6 +5,24 @@ import { appBaseURL, isAppReachable } from './utils/appAvailability'
 const EMPTY_STATE = JSON.stringify({ cookies: [], origins: [] })
 
 /**
+ * Credentials for the local dev app behind BASE_URL. The defaults are throwaway
+ * dev-seed values — there is no deployed system they unlock — but they are read
+ * from the environment so a real instance never needs them edited into source.
+ */
+const ROLES = [
+  {
+    username: process.env.ADMIN_USER ?? 'admin',
+    password: process.env.ADMIN_PASSWORD ?? '123456',
+    statePath: 'auth/admin.json',
+  },
+  {
+    username: process.env.USER_USER ?? 'user',
+    password: process.env.USER_PASSWORD ?? 'password',
+    statePath: 'auth/user.json',
+  },
+]
+
+/**
  * Logs in once per role and stores the session, so `adminPage` / `userPage`
  * fixtures can start authenticated instead of replaying the login UI per test.
  *
@@ -21,8 +39,9 @@ async function globalSetup() {
 
   const browser = await chromium.launch()
   try {
-    await loginAs(browser, baseURL, 'admin', '123456', 'auth/admin.json')
-    await loginAs(browser, baseURL, 'user', 'password', 'auth/user.json')
+    for (const role of ROLES) {
+      await loginAs(browser, baseURL, role.username, role.password, role.statePath)
+    }
   } catch (e) {
     console.warn(`\n⚠  Auth setup failed — ${(e as Error).message}\n`)
     writeEmptyStates()

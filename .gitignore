@@ -1,0 +1,38 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+#auth
+auth/*.json
+
+# Env
+.env
+.env.*
+
+# Build
+dist/
+build/
+
+# Logs
+logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Playwright
+test-results/
+playwright-report/
+screenshots/
+
+# Coverage
+coverage/
+
+# Archives
+*.zip
+
+# Claude Code local overrides (machine-specific, never shared)
+.claude/settings.local.json
