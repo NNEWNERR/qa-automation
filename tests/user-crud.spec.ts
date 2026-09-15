@@ -3,7 +3,7 @@ import { createUser, createUserWithFaker, createUsers } from '../factories/userF
 
 // ─── API CRUD ────────────────────────────────────────────────────────────────
 
-test.describe('User CRUD — API', () => {
+test.describe('User CRUD — API', { tag: ['@api', '@regression'] }, () => {
 
   test('GET /users — list is non-empty and matches JPUser shape', async ({ request }) => {
     const res = await request.get('/users')
@@ -56,7 +56,7 @@ test.describe('User CRUD — API', () => {
 
 // ─── page.route() mock pattern ───────────────────────────────────────────────
 
-test.describe('User CRUD — route mock', () => {
+test.describe('User CRUD — route mock', { tag: ['@api', '@regression'] }, () => {
 
   test('GET /users — mock returns factory data', async ({ page }) => {
     const users = createUsers(3)

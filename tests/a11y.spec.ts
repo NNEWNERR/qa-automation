@@ -1,53 +1,71 @@
 import { test, expect } from '../fixtures'
 import AxeBuilder from '@axe-core/playwright'
 
-// This test captures a screenshot of the navigation header with dynamic content masked out, and compares it to a baseline image.
-test.describe('Accessibility Tests', () => {
+/**
+ * Accessibility checks — WCAG 2.1 A/AA via axe-core, plus keyboard reachability
+ * (which axe cannot assert: it sees the DOM, not the tab order in practice).
+ *
+ * Visual regression lives in visual.spec.ts, not here.
+ */
+test.describe('Accessibility — TodoMVC', { tag: ['@a11y', '@ui'] }, () => {
 
-    test('navigation snapshot with masked content', async ({ page }) => {
-        await page.goto('https://demo.playwright.dev/todomvc')
-        const nav = page.locator('header')
-        await expect(nav).toHaveScreenshot('navigation.png', {
-            mask: [page.locator('.timestamp'), page.locator('.live-count')],
-        })
-    })
+  test.beforeEach(async ({ page }) => {
+    await page.goto('./')
+  })
 
-    test('homepage has no a11y violations V.1', async ({ page }) => {
-        await page.goto('https://demo.playwright.dev/todomvc')
+  test('whole page has no WCAG 2.1 A/AA violations', async ({ page }) => {
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      // The TodoMVC demo has known decorative contrast issues (h1, footer credits)
+      // that we cannot fix in a third-party target — scoped out rather than
+      // muting the whole scan.
+      .disableRules(['color-contrast'])
+      .analyze()
 
-        const results = await new AxeBuilder({ page })
-            .withTags(['wcag2a', 'wcag2aa'])
-            // TodoMVC demo has known decorative color-contrast issues (h1, footer)
-            // that are outside our control — exclude from this scan
-            .disableRules(['color-contrast'])
-            .analyze()
+    // Attach the raw violations to the HTML report so a failure is actionable
+    // without re-running locally.
+    if (results.violations.length > 0) {
+      await test.info().attach('axe-violations.json', {
+        body: JSON.stringify(results.violations, null, 2),
+        contentType: 'application/json',
+      })
+    }
 
-        if (results.violations.length > 0) {
-            console.log('A11y violations:', JSON.stringify(results.violations, null, 2))
-        }
+    expect(results.violations).toEqual([])
+  })
 
-        expect(results.violations).toHaveLength(0)
-    })
+  test('app shell alone has no violations when scoped', async ({ page }) => {
+    // .todoapp is always rendered; .todo-list is empty on first load, so scoping
+    // to the list would make this test vacuously pass.
+    const results = await new AxeBuilder({ page })
+      .include('.todoapp')
+      .withTags(['wcag2a', 'wcag2aa'])
+      .disableRules(['color-contrast'])
+      .analyze()
 
-    test('homepage has no a11y violations V.2', async ({ page }) => {
-        await page.goto('https://demo.playwright.dev/todomvc')
+    expect(results.violations).toEqual([])
+  })
 
-        // scope scan to the app shell (.todoapp is always present, unlike .todo-list which is empty by default)
-        const results = await new AxeBuilder({ page })
-            .include('.todoapp')
-            .withTags(['wcag2a', 'wcag2aa'])
-            .disableRules(['color-contrast'])
-            .analyze()
+  test('first Tab lands on a visible control', async ({ page }) => {
+    await page.locator('body').press('Tab')
+    await expect(page.locator(':focus')).toBeVisible()
+  })
 
-        expect(results.violations).toHaveLength(0)
+  test('a todo can be added with the keyboard alone', async ({ page }) => {
+    // fill() targets the input explicitly rather than trusting whatever has
+    // focus — a focus regression should fail the Tab test above, not silently
+    // reroute typing here.
+    await page.getByPlaceholder('What needs to be done?').fill('Keyboard test')
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('Keyboard test')).toBeVisible()
+  })
 
-        // keyboard nav
-        await page.keyboard.press('Tab')
-        await expect(page.locator(':focus')).toBeVisible()
-
-        // accessible label
-        await expect(
-            page.getByPlaceholder('What needs to be done?')
-        ).toHaveAttribute('placeholder')
-    })
+  test('the todo input exposes an accessible name', async ({ page }) => {
+    // Asserts the *computed* accessible name rather than a specific attribute:
+    // the demo has no aria-label and falls back to its placeholder, which is
+    // exactly what a screen reader announces.
+    await expect(page.getByPlaceholder('What needs to be done?')).toHaveAccessibleName(
+      /.+/,
+    )
+  })
 })

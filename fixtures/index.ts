@@ -13,7 +13,7 @@ export const test = base.extend<Fixtures>({
     // clear localStorage before every test so todos don't bleed across runs
     await page.addInitScript(() => localStorage.clear())
     const todoPage = new TodoPage(page)
-    await todoPage.goto('https://demo.playwright.dev/todomvc')
+    await todoPage.goto('./')
     await use(todoPage)
   },
 
