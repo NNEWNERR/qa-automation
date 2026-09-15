@@ -1,6 +1,6 @@
 import { test, expect } from '../fixtures'
 
-test.describe('TodoMVC — Week 2 mini project', () => {
+test.describe('TodoMVC — core flows', { tag: ['@ui', '@regression'] }, () => {
 
   test('add todo item appears in list', async ({ todoPage }) => {
     await todoPage.addTodo('Buy milk')
