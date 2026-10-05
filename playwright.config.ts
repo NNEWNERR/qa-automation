@@ -88,6 +88,14 @@ export default defineConfig({
       use: todoMvc,
     },
     {
+      // Seed + output of the Playwright Test Agents (planner → generator →
+      // healer). Generated specs land in tests/generated/ and are gated by CI
+      // like any other test. See README → "Playwright Test Agents".
+      name: 'agent-tests',
+      testMatch: ['**/seed.spec.ts', '**/generated/**/*.spec.ts'],
+      use: todoMvc,
+    },
+    {
       // Requires a local app on BASE_URL (default :8100). The suite skips
       // itself when that app isn't reachable — see tests/login.spec.ts.
       name: 'login-tests',

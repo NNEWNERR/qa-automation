@@ -5,7 +5,7 @@
 Playwright + TypeScript test automation **portfolio** (reference project, not a
 product). Targets public demos: JSONPlaceholder (API) and TodoMVC (UI).
 
-31 tests / 7 projects. Baseline: **28 passed, 3 skipped, 0 failed** (~40s).
+32 tests / 8 projects. Baseline: **29 passed, 3 skipped, 0 failed** (~40s).
 The 3 skips are `login-tests` — they need a local app on `BASE_URL`.
 
 ## Commands
@@ -19,6 +19,7 @@ npm run test:ui              # todo.spec
 npm run test:a11y            # axe + keyboard
 npm run test:visual          # screenshot baselines (local only)
 npm run test:login           # needs BASE_URL app running
+npm run test:agents          # seed + tests/generated/ (Playwright Test Agents)
 npm run test:update-snapshots
 npm run typecheck            # tsc --noEmit
 npm run report
@@ -45,9 +46,26 @@ tests/        api · user-crud · todo · a11y · visual · smoke · login
 | ui-tests | todo.spec.ts | demo.playwright.dev/todomvc/ |
 | a11y-tests | a11y.spec.ts | demo.playwright.dev/todomvc/ |
 | visual-tests | visual.spec.ts | demo.playwright.dev/todomvc/ |
+| agent-tests | seed.spec.ts + generated/**/*.spec.ts | demo.playwright.dev/todomvc/ |
 | login-tests | login.spec.ts | `BASE_URL` (default :8100) |
 
-Tags: `@smoke` `@regression` `@api` `@ui` `@a11y` `@visual` `@local-app`.
+Tags: `@smoke` `@regression` `@api` `@ui` `@a11y` `@visual` `@local-app` `@agent`.
+
+## Playwright Test Agents
+
+`.claude/agents/playwright-test-{planner,generator,healer}.md` + `.mcp.json`
+(`playwright-test` server = `npx playwright run-test-mcp-server`).
+Flow: planner → `specs/*.md` → generator → `tests/generated/` → healer.
+
+- Each agent file ends with a **Repository rules** section. Those rules win over
+  the generic text above them — most importantly, the healer may fix locators
+  but never expected values or assertions, and only under `tests/generated/`.
+- `npx playwright init-agents --loop=claude` regenerates the three agent files
+  and **drops the Repository rules sections**. After re-running it (e.g. on a
+  Playwright upgrade), restore them from `git diff` before committing. It also
+  overwrites `tests/seed.spec.ts` and `specs/README.md`.
+- Agents and the MCP server load at session start: open a new Claude Code
+  session in this folder and approve the `playwright-test` server once.
 
 ## Key conventions
 
