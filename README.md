@@ -11,14 +11,14 @@ Targets are public demo systems so the suite is runnable by anyone:
 ```bash
 npm ci
 npx playwright install chromium
-npm test          # 28 passed, 3 skipped, ~40s
+npm test          # 29 passed, 3 skipped, ~40s
 ```
 
 ---
 
 ## Coverage
 
-31 tests across 7 projects. The **technique** column is why each test exists — not
+32 tests across 8 projects. The **technique** column is why each test exists — not
 just what it clicks.
 
 ### API — `api.spec.ts`, `user-crud.spec.ts` (10 tests)
@@ -83,6 +83,47 @@ BASE_URL=http://localhost:8100 npm run test:login
 
 ---
 
+## Playwright Test Agents
+
+The repo is wired for Playwright's built-in agents (`npx playwright init-agents
+--loop=claude`), which run as Claude Code subagents over the `playwright-test`
+MCP server declared in `.mcp.json`.
+
+```
+planner ──> specs/*.md ──> generator ──> tests/generated/**/*.spec.ts ──> healer
+   │                           │                                            │
+   └── both start from tests/seed.spec.ts (TodoMVC open, empty list) ───────┘
+```
+
+| Agent | Does | Writes to |
+|---|---|---|
+| planner | Explores the live app and writes a test plan | `specs/` |
+| generator | Executes each planned step in a real browser, then emits the spec | `tests/generated/` |
+| healer | Re-runs failures and repairs locators | `tests/generated/` only |
+
+`tests/seed.spec.ts` is the one test in the `agent-tests` project today — it uses
+the same `todoPage` fixture as the hand-written specs, so generated tests start
+from the identical state. Anything the generator produces is picked up by that
+project and gated by CI like every other test.
+
+The agent definitions in `.claude/agents/` are Playwright's defaults plus a
+**Repository rules** section per agent. The one that matters:
+
+> The healer may fix a locator. It may not change an expected value, weaken an
+> assertion, add a retry or raise a timeout. When the app contradicts the plan,
+> it marks the test `fixme` and reports a suspected defect.
+
+Out of the box the healer is told to "do the most reasonable thing possible to
+pass the test". That is the right default for a demo and the wrong one for a
+regression suite: a self-healing test that rewrites its own assertion will go
+green on the exact change it existed to catch.
+
+```bash
+npm run test:agents     # seed + everything under tests/generated/
+```
+
+---
+
 ## Commands
 
 | Command | Runs |
@@ -91,24 +132,27 @@ BASE_URL=http://localhost:8100 npm run test:login
 | `npm run test:ci` | Everything except `@visual` (what CI runs) |
 | `npm run test:smoke` | Reachability only |
 | `npm run test:api` / `test:ui` / `test:a11y` / `test:visual` | One layer |
+| `npm run test:agents` | Agent seed + generated specs |
 | `npm run test:regression` | Everything tagged `@regression` |
 | `npm run test:update-snapshots` | Regenerate visual baselines |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run report` | Open the last HTML report |
 
-Tags: `@smoke` `@regression` `@api` `@ui` `@a11y` `@visual` `@local-app`.
+Tags: `@smoke` `@regression` `@api` `@ui` `@a11y` `@visual` `@local-app` `@agent`.
 
 ---
 
 ## Architecture
 
 ```
+specs/        Test plans written by the planner agent — the oracle for generated tests
 pages/        Page Objects — TodoPage extends BasePage
 fixtures/     todoPage (localStorage cleared per test), adminPage/userPage (storageState)
 factories/    Deterministic + faker-backed test data builders
 utils/        reporter.ts (TestInfo → typed SummaryReport), appAvailability.ts
 types/        Every type in the repo — none declared inside a spec
 tests/        One spec per concern: api · user-crud · todo · a11y · visual · smoke · login
+              + seed.spec.ts and generated/ for the test agents
 ```
 
 Conventions worth calling out:
