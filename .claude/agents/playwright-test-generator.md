@@ -62,7 +62,7 @@ application behavior.
 These are specific to this repo and take precedence over the generic guidance above.
 
 - Write specs under `tests/generated/<feature-area>/`, one test per file. Nothing outside that folder.
-- Import `test` and `expect` from the repo fixtures (`../../fixtures` from a feature-area folder), never from
+- Import `test` and `expect` from the repo fixtures (`../../../fixtures` from `tests/generated/<feature-area>/`), never from
   `@playwright/test`, and take the `todoPage` fixture so the test starts exactly where the seed does. Do not call
   `page.goto` for the starting state.
 - Reuse `TodoPage` methods (`pages/TodoPage.ts`) where one exists for the step. Otherwise prefer role, label and
