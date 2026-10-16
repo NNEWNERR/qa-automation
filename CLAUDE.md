@@ -5,7 +5,8 @@
 Playwright + TypeScript test automation **portfolio** (reference project, not a
 product). Targets public demos: JSONPlaceholder (API) and TodoMVC (UI).
 
-32 tests / 8 projects. Baseline: **29 passed, 3 skipped, 0 failed** (~40s).
+63 tests / 8 projects. Baseline: **60 passed, 3 skipped, 0 failed** (~1–2 min).
+31 of them are agent-generated under `tests/generated/` (plan: `specs/todo-gaps.md`).
 The 3 skips are `login-tests` — they need a local app on `BASE_URL`.
 
 ## Commands
@@ -34,6 +35,7 @@ factories/    userFactory — deterministic + faker builders
 utils/        reporter.ts (TestInfo → SummaryReport), appAvailability.ts (probe)
 types/        every type in the repo lives here
 tests/        api · user-crud · todo · a11y · visual · smoke · login
+              + seed.spec.ts, generated/<feature-area>/ (agent output)
 ```
 
 ## Test projects (playwright.config.ts)
@@ -64,6 +66,10 @@ Flow: planner → `specs/*.md` → generator → `tests/generated/` → healer.
   and **drops the Repository rules sections**. After re-running it (e.g. on a
   Playwright upgrade), restore them from `git diff` before committing. It also
   overwrites `tests/seed.spec.ts` and `specs/README.md`.
+- `*_setup_page` tools need `project: "agent-tests"` or they report
+  "seed test not found" (8 projects in the config).
+- `todoPage` clears localStorage **once per test** (sessionStorage-guarded init
+  script) so `page.reload()` keeps app data — don't revert to an unguarded clear.
 - Agents and the MCP server load at session start: open a new Claude Code
   session in this folder and approve the `playwright-test` server once.
 
