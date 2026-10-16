@@ -37,3 +37,4 @@ coverage/
 # Claude Code local overrides (machine-specific, never shared)
 .claude/settings.local.jsonresults.json
 vitest-results.json
+inventory.json
