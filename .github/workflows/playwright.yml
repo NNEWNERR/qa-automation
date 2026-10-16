@@ -73,6 +73,12 @@ jobs:
           service_account: ci-stats-writer@supakorn-portfolio.iam.gserviceaccount.com
           token_format: access_token
           create_credentials_file: false
+      - name: List every defined test (incl. ones CI filters out)
+        if: always() && steps.gcp.outcome == 'success'
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: inventory.json
+        run: npx playwright test --list --reporter=json
       - name: Publish test stats to nnewnerr.github.io
         # Runs on red builds too — the portfolio shows the latest result, not
         # the latest green one. Never fails the build on its own.
@@ -80,7 +86,7 @@ jobs:
         continue-on-error: true
         env:
           FIRESTORE_TOKEN: ${{ steps.gcp.outputs.access_token }}
-        run: node scripts/publish-test-stats.mjs --suite qa-automation --repo qa-automation --label "Playwright · 8 projects" --kind playwright --file results.json
+        run: node scripts/publish-test-stats.mjs --suite qa-automation --repo qa-automation --label "Playwright · 8 projects" --kind playwright --file results.json --inventory inventory.json
 
   visual-baselines:
     name: Generate Linux visual baselines (manual)
