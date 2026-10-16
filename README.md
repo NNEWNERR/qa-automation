@@ -11,14 +11,14 @@ Targets are public demo systems so the suite is runnable by anyone:
 ```bash
 npm ci
 npx playwright install chromium
-npm test          # 29 passed, 3 skipped, ~40s
+npm test          # 60 passed, 3 skipped, ~1–2 min
 ```
 
 ---
 
 ## Coverage
 
-32 tests across 8 projects. The **technique** column is why each test exists — not
+63 tests across 8 projects. The **technique** column is why each test exists — not
 just what it clicks.
 
 ### API — `api.spec.ts`, `user-crud.spec.ts` (10 tests)
@@ -69,6 +69,15 @@ diff. `animations: 'disabled'` on every component shot.
 Pure reachability for both targets. No business assertions — it exists to fail
 fast and cheaply when a target is down, so a red run is diagnosable at a glance.
 
+### Agent-generated — `tests/generated/` (31 tests + seed)
+
+TodoMVC behaviour the hand-written `todo.spec.ts` does not reach: edit by
+double-click (Enter / Escape / blur / edit-to-empty), toggle-all and Clear
+completed, the Completed filter and `#/completed` route, persistence across
+reload, and whitespace trimming. Written by the planner and generator agents,
+then reviewed — see [First run](#first-run-2026-10-16) for exactly what a human
+changed.
+
 ### Auth — `login.spec.ts` (3 tests, skipped by default)
 
 Role-based access (admin / user / guest) against a local Ionic app, using
@@ -101,9 +110,8 @@ planner ──> specs/*.md ──> generator ──> tests/generated/**/*.spec.t
 | generator | Executes each planned step in a real browser, then emits the spec | `tests/generated/` |
 | healer | Re-runs failures and repairs locators | `tests/generated/` only |
 
-`tests/seed.spec.ts` is the one test in the `agent-tests` project today — it uses
-the same `todoPage` fixture as the hand-written specs, so generated tests start
-from the identical state. Anything the generator produces is picked up by that
+`tests/seed.spec.ts` uses the same `todoPage` fixture as the hand-written specs,
+so generated tests start from the identical state. Anything the generator produces is picked up by that
 project and gated by CI like every other test.
 
 The agent definitions in `.claude/agents/` are Playwright's defaults plus a
@@ -121,6 +129,68 @@ green on the exact change it existed to catch.
 ```bash
 npm run test:agents     # seed + everything under tests/generated/
 ```
+
+### First run (2026-10-16)
+
+One end-to-end pass, run headless (`claude -p --agent playwright-test-<name>`)
+against the repo's `.mcp.json`. The agents ran on Sonnet; the review was done by
+hand.
+
+| Step | Result |
+|---|---|
+| **Planner** | `specs/todo-gaps.md` — 5 sections, **32 scenarios**, scoped to what `todo.spec.ts` misses. Its own summary said 33; the file has 32. |
+| **Plan review** | Removed 1 scenario (it asserted the fixture's behaviour, not the app's) and moved file paths into feature-area folders → **31 scenarios**. |
+| **Generator** | **31 specs**, one per scenario, 5 sessions in parallel. Every generator reported "app matched the plan" for every scenario. As written, **0 of 31 ran** — see below. |
+| **Human fixes** | 3 changes, listed below. After them: 32/32 (31 + seed) green, then 128/128 on `--repeat-each=4`. |
+| **Healer** | Tested on a throwaway branch — fixed the broken locator, refused to touch the wrong expected value, but did **not** apply `test.fixme` as the rules intend. See below. |
+
+**What a human changed before the generated specs were usable**
+
+1. **Import path — the bug was in our rule, not the agent.** The generator's
+   Repository rules said to import fixtures from `../../fixtures`; from
+   `tests/generated/<area>/` it is `../../../fixtures`. All 31 files followed
+   the rule and all 31 failed to load. Fixed in the rule and the specs.
+2. **`uncheck()` on a row that leaves the view** (`filter-completed-uncomplete`).
+   On the Completed filter the row disappears on click, so `uncheck()`'s
+   post-action state check waits on a detached node until timeout. Replaced with
+   `click()`; the assertions after it are unchanged.
+3. **`for … of await items.all()`** (`toggle-all-completes`) snapshots the list
+   once instead of retrying. Replaced with the array form
+   `toHaveClass([/completed/, …])` that another generator session had already
+   used.
+
+The planner also found a real harness issue on its own: `todoPage` cleared
+`localStorage` from an init script, which re-runs on `page.reload()`, so a
+persistence test could never pass. The fixture now clears once per test
+(guarded by a `sessionStorage` flag) and the hand-written suites are unaffected.
+
+Reviewed and kept as written: the CSS `.todo-count` locator (no role or label to
+target, and the plan names it), `getByText('Mark all as complete')` (the real
+checkbox is visually hidden; the label is what a user clicks), and one
+`page.evaluate` inside `expect.poll` (the plan asks for the `localStorage`
+contents).
+
+**Healer, against its rules.** On a throwaway branch, one generated spec got a
+broken locator (`name: 'Edit'` → `'Edit todo'`) and another a wrong expected
+value (`expectCount(2)` → `3`, where the plan says "2 items left"). The healer:
+
+- fixed the locator back to `name: 'Edit'` and verified that test passes;
+- left the wrong expectation untouched and reported it, citing the plan section;
+- did **not** mark it `test.fixme`. Its reasoning: the fixme rule is worded for
+  "the app contradicts the plan", and here the app matched the plan and the
+  *test* did. That is a gap in the rule's wording, recorded rather than patched
+  after the fact.
+
+The experiment branch was deleted; nothing from it is merged.
+
+**Gotchas from the run**
+
+- `planner_setup_page` / `generator_setup_page` need `project: "agent-tests"` —
+  with 8 projects the MCP server cannot find the seed otherwise
+  (`Error: seed test not found`).
+- One unexplained failure in roughly 350 executions of the generated specs
+  during review (the report was overwritten before it was read). Not
+  reproduced in 128 repeats; no retry added.
 
 ---
 
@@ -200,7 +270,10 @@ regression testing meaningless.
 ### Known flake
 
 JSONPlaceholder occasionally returns a non-200 under parallel load — observed
-once in ~10 local runs on `GET /users/1`, not reproducible on re-run. It is a
+once in ~10 local runs on `GET /users/1`, not reproducible on re-run. A second
+symptom showed up on 2026-10-16: the two `user-crud` route-mock tests timing out
+on `page.goto` to the JSONPlaceholder homepage in a full parallel run, then
+passing on two straight re-runs. It is a
 third-party rate limit, not a defect in the system under test, and CI's
 `retries: 2` absorbs it. Recorded here rather than papered over with a local
 retry, because a local retry would hide a real regression in the same test.
