@@ -35,6 +35,9 @@ coverage/
 *.zip
 
 # Claude Code local overrides (machine-specific, never shared)
-.claude/settings.local.jsonresults.json
+.claude/settings.local.json
+
+# CI stats inputs (see publish-stats in .github/workflows/playwright.yml)
+results.json
 vitest-results.json
 inventory.json
