@@ -43,7 +43,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # OIDC token for the Firestore stats step
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -62,10 +61,47 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+      - name: List every defined test (incl. ones CI filters out)
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: inventory.json
+        run: npx playwright test --list --reporter=json
+      - name: Keep totals for the stats job
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-stats
+          path: |
+            results.json
+            inventory.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+  # The only job that can mint the stats token. It never runs `npm ci` or any
+  # repo code besides the dependency-free publish script, so a compromised
+  # package elsewhere in the pipeline cannot request the OIDC token.
+  publish-stats:
+    name: Publish test stats
+    needs: merge-reports
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write   # OIDC token for Workload Identity Federation
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/publish-test-stats.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v7
+        with: { node-version: '22' }
+      - uses: actions/download-artifact@v8
+        with: { name: test-stats, path: stats }
       - name: Authenticate to portfolio Firestore
         # Keyless: GitHub OIDC -> Workload Identity Federation. Only pushes to
         # main in NNEWNERR repos can mint this token.
-        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: gcp
         uses: google-github-actions/auth@v3
         with:
@@ -73,20 +109,15 @@ jobs:
           service_account: ci-stats-writer@supakorn-portfolio.iam.gserviceaccount.com
           token_format: access_token
           create_credentials_file: false
-      - name: List every defined test (incl. ones CI filters out)
-        if: always() && steps.gcp.outcome == 'success'
-        continue-on-error: true
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: inventory.json
-        run: npx playwright test --list --reporter=json
       - name: Publish test stats to nnewnerr.github.io
         # Runs on red builds too — the portfolio shows the latest result, not
         # the latest green one. Never fails the build on its own.
-        if: always() && steps.gcp.outcome == 'success'
-        continue-on-error: true
         env:
           FIRESTORE_TOKEN: ${{ steps.gcp.outputs.access_token }}
-        run: node scripts/publish-test-stats.mjs --suite qa-automation --repo qa-automation --label "Playwright · 8 projects" --kind playwright --file results.json --inventory inventory.json
+        run: |
+          inventory=()
+          [ -f stats/inventory.json ] && inventory=(--inventory stats/inventory.json)
+          node scripts/publish-test-stats.mjs --suite qa-automation --repo qa-automation --label "Playwright · 8 projects" --kind playwright --file stats/results.json "${inventory[@]}"
 
   visual-baselines:
     name: Generate Linux visual baselines (manual)
